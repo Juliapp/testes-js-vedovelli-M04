@@ -3,7 +3,8 @@
     "browser": true,
     "es6": true,
     "node": true,
-    "mocha": true
+    "mocha": true,
+    "jest/globals": true
   },
   "extends": ["airbnb-base"],
   "globals": {
@@ -25,5 +26,6 @@
     "object-curly-spacing": ["warn", "always"],
     "array-bracket-spacing": ["warn", "always"],
     "import/prefer-default-export": [0]
-  }
+  },
+  "plugins": ["jest"]
 }
