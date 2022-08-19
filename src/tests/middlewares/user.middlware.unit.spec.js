@@ -3,7 +3,7 @@ import { ReasonPhrases, StatusCodes } from 'http-status-codes';
 import { get } from '@/middleware/user.middleware';
 
 import * as service from '@/database/service';
-import { buildNext, buildReq } from 'test/builders';
+import { buildError, buildNext, buildReq } from 'test/builders';
 jest.mock('@/database/service');
 
 describe('Middleware > User', () => {
