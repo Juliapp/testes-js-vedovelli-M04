@@ -1,14 +1,26 @@
-const { index } = require('@/controllers/orders.controller');
-const { StatusCodes } = require('http-status-codes');
-const {
+import { StatusCodes } from 'http-status-codes';
+import {
+  buildError,
   buildNext,
+  buildOrder,
+  buildOrders,
   buildReq,
   buildRes,
-  buildOrders,
-  buildError,
-} = require('test/builders');
+} from 'test/builders';
+import { create, index, validate } from '@/controllers/orders.controller';
+import * as validator from 'express-validator';
+import { validationResponse } from '@/controllers/utils';
+
+jest.mock('express-validator');
+jest.mock('@/controllers/utils');
+
+JSON.stringify = jest.fn();
 
 describe('Controller > Orders', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should return status 200 with a list of orders', async () => {
     const req = buildReq();
     const res = buildRes();
@@ -44,6 +56,128 @@ describe('Controller > Orders', () => {
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next).toHaveBeenCalledWith(error);
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+  });
+
+  it('should build a list of errors', () => {
+    const method = 'create';
+    const existsFn = jest
+      .fn()
+      .mockReturnValueOnce('Please provide a list of products');
+
+    jest.spyOn(validator, 'body').mockReturnValueOnce({
+      exists: existsFn,
+    });
+
+    const errors = validate(method);
+
+    expect(errors).toEqual(['Please provide a list of products']);
+    expect(validator.body).toHaveBeenCalledTimes(1);
+    expect(validator.body).toHaveBeenCalledWith(
+      'products',
+      'Please provide a list of products',
+    );
+  });
+
+  it('should throw an error when an unknown method is provided', () => {
+    // encapsulamento de uma função dentro do expect para capturar um erro
+    expect(() => validate('some unknown method')).toThrowError(
+      'Please provide a valid method',
+    );
+  });
+
+  it('should return status 200 and the created order id', async () => {
+    const products = buildOrder();
+    const req = buildReq({
+      body: { products },
+    });
+    const res = buildRes();
+    const next = buildNext();
+
+    const isEmpty = jest.fn().mockReturnValueOnce(true);
+
+    jest.spyOn(validator, 'validationResult').mockReturnValueOnce({
+      isEmpty,
+    });
+
+    jest.spyOn(req.service, 'saveOrder').mockResolvedValueOnce({
+      id: 123,
+    });
+
+    await create(req, res, next);
+
+    expect(isEmpty).toHaveBeenCalledTimes(1);
+
+    expect(JSON.stringify).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify).toHaveBeenCalledWith(products);
+
+    expect(res.status).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(200);
+
+    expect(res.json).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith({ order: { id: 123 } });
+
+    expect(req.service.saveOrder).toHaveBeenCalledTimes(1);
+    expect(req.service.saveOrder).toHaveBeenCalledWith({
+      userid: req.user.id,
+      products: JSON.stringify(products),
+    });
+  });
+
+  it('should forward an error when service.saveOrder fails', async () => {
+    const products = buildOrder();
+    const req = buildReq({
+      body: { products },
+    });
+    const res = buildRes();
+    const next = buildNext();
+
+    const isEmpty = jest.fn().mockReturnValueOnce(true);
+
+    jest.spyOn(validator, 'validationResult').mockReturnValueOnce({
+      isEmpty,
+    });
+
+    const error = buildError(
+      StatusCodes.InternalServerError,
+      'Some message here!',
+    );
+
+    jest.spyOn(req.service, 'saveOrder').mockRejectedValueOnce(error);
+
+    await create(req, res, next);
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith(error);
+  });
+
+  it('should return validation response when error bag is not empty', async () => {
+    const req = buildReq();
+    const res = buildRes();
+    const next = buildNext();
+
+    const isEmpty = jest.fn().mockReturnValueOnce(false);
+    const errorBag = {
+      isEmpty,
+      array: jest.fn().mockReturnValueOnce(['error1', 'error2']),
+    };
+
+    jest.spyOn(validator, 'validationResult').mockReturnValueOnce(errorBag);
+
+    const error = buildError(
+      StatusCodes.InternalServerError,
+      'Some message here!',
+    );
+
+    expect(await create(req, res, next)).toBeUndefined();
+
+    expect(validationResponse).toHaveBeenCalledTimes(1);
+    expect(validationResponse).toHaveBeenCalledWith(res, errorBag);
 
     expect(res.status).not.toHaveBeenCalled();
     expect(res.json).not.toHaveBeenCalled();

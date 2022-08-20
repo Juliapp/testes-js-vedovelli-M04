@@ -8,7 +8,7 @@ import * as service from '@/database/service';
 jest.mock('@/database/service');
 
 export function buildReq({ user = buildUser(), ...overrides } = {}) {
-  const req = {
+  return {
     user,
     service,
     headers: { email: user.email },
@@ -16,7 +16,6 @@ export function buildReq({ user = buildUser(), ...overrides } = {}) {
     params: {},
     ...overrides,
   };
-  return req;
 }
 
 export function buildRes(overrides = {}) {

@@ -1,11 +1,12 @@
 import { buildError, buildOrders, buildUser } from 'test/builders';
 import { Order } from '@/database/models/order.model';
-import { listOrders, saveOrder } from '@/database/service';
+import { listOrders, saveOrder } from '@/database/service/orders.service';
 import { StatusCodes } from 'http-status-codes';
 import { logger } from '@/utils/logger';
 
 jest.mock('@/database/models/order.model');
 jest.mock('@/utils/logger');
+
 JSON.parse = jest.fn();
 
 describe('Service > Orders', () => {
